@@ -1,4 +1,6 @@
-# qBittorrent-NatMap 
+# Transmission-NatMap
+
+> A modified version of [qBittorrent-NatMap](https://github.com/soxfor/qbittorrent-natmap) to use Transmission instead of qBittorrent. Not a final version, please refer to the original project instead.
 
 The objective of this container is to run a script that requests a port forward (via NAT-PMP) from the VPN provider and upon success changes the listening port of the qBittorrent client when running in Docker
 
