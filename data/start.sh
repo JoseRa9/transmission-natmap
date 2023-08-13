@@ -61,7 +61,7 @@ transmission_login() {
 }
 
 transmission_changeport() {
-    curl -s --location "http://$TRANSMISSION_SERVER:$TRANSMISSION_PORT/transmission/rpc" --header "X-Transmission-Session-Id: $1" --header "Content-Type: application/json" --data "{\"arguments\": {\"peer-port\": $2, \"peer-port-random-on-start\": false, \"port-forwarding-enabled\": false}, \"method\": \"session-se >/dev/null 2>&1
+    curl -s --location "http://$TRANSMISSION_SERVER:$TRANSMISSION_PORT/transmission/rpc" --header "X-Transmission-Session-Id: $1" --header "Content-Type: application/json" --data "{\"arguments\": {\"peer-port\": $port, \"peer-port-random-on-start\": false, \"port-forwarding-enabled\": false}, \"method\": \"session-set\"}" >/dev/null 2>&1
     return $?
 }
 
