@@ -62,30 +62,24 @@ services:
       gluetun:
         condition: service_healthy
 
-  qbittorrent-natmap:
-    # https://github.com/soxfor/qbittorrent-natmap
-    image: ghcr.io/soxfor/qbittorrent-natmap:latest
-    container_name: qbittorrent-natmap
+  transmission-natmap:
+    image: ghcr.io/josera9/transmission-natmap:main
+    container_name: transmission-natmap
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - TZ=Etc/UTC
-      # - QBITTORRENT_SERVER=
-      # - QBITTORRENT_PORT=8080
-      # - QBITTORRENT_USER=admin
-      # - QBITTORRENT_PASS=adminadmin
+      # - TRANSMISSION_SERVER=
+      # - TRANSMISSION_PORT=8080
+      # - TRANSMISSION_USER=admin
+      # - TRANSMISSION_PASS=adminadmin
       # - VPN_GATEWAY=
       # - VPN_CT_NAME=gluetun
       # - VPN_IF_NAME=tun0
       # - CHECK_INTERVAL=300
       # - NAT_LEASE_LIFETIME=300
-    network_mode: "service:gluetun"
-    depends_on:
-      qbittorrent:
-        condition: service_started
-      gluetun:
-        condition: service_healthy
+
 
 #networks:
 #  gluetun-network:

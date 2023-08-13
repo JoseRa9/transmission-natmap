@@ -45,7 +45,7 @@ getpublicip() {
 }
 
 findconfiguredport() {
-    curl -s -i --header "Referer: http://${QBITTORRENT_SERVER}:${QBITTORRENT_PORT}" --cookie "$1" "http://${QBITTORRENT_SERVER}:${QBITTORRENT_PORT}/api/v2/app/preferences" | grep -oP '(?<=\"listen_port\"\:)(\d{1,5})'
+    curl --location "$TRANSMISSION_SERVER:$TRANSMISSION_PORT/transmission/rpc" --header "X-Transmission-Session-Id: $transmission_sid" --header "Content-Type: application/json" --data '{"arguments": { "fields": ["peer-port"] }, "method": "session-get"}' | grep -oP '(?<="peer-port":)(\d{1,5})'
 }
 
 findactiveport() {
@@ -55,27 +55,26 @@ findactiveport() {
     natpmpc -g ${VPN_GATEWAY} -a 0 0 tcp ${NAT_LEASE_LIFETIME} | grep -oP '(?<=Mapped public port.).*(?=.protocol.*)'
 }
 
-qbt_login() {
-    qbt_sid=$(curl -s -i --header "Referer: http://${QBITTORRENT_SERVER}:${QBITTORRENT_PORT}" --data "username=${QBITTORRENT_USER}" --data-urlencode "password=${QBITTORRENT_PASS}" "http://${QBITTORRENT_SERVER}:${QBITTORRENT_PORT}/api/v2/auth/login" | grep -oP '(?!set-cookie:.)SID=.*(?=\;.HttpOnly\;)')
+transmission_login() {
+    transmission_sid=$(curl --location "http://${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}/transmission/rpc' | grep -oP '<code>X-Transmission-Session-Id: \K.*?(?=<\/code>)")
     return $?
 }
 
-qbt_changeport(){
-    curl -s -i --header "Referer: http://${QBITTORRENT_SERVER}:${QBITTORRENT_PORT}" --cookie "$1" --data-urlencode "json={\"listen_port\":$2,\"random_port\":false,\"upnp\":false}" "http://${QBITTORRENT_SERVER}:${QBITTORRENT_PORT}/api/v2/app/setPreferences" >/dev/null 2>&1
+transmission_changelistenport() {
+    curl --location "http://$TRANSMISSION_SERVER:$TRANSMISSION_PORT/transmission/rpc" --header "X-Transmission-Session-Id: $transmission_sid" --header "Content-Type: application/json" --data "{"arguments": {"peer-port": $1, "peer-port-random-on-start": false, "port-forwarding-enabled": false}, "method": "session-set"}" >/dev/null 2>&1
     return $?
 }
 
-qbt_checksid(){
-    if curl -s --header "Referer: http://${QBITTORRENT_SERVER}:${QBITTORRENT_PORT}" --cookie "${qbt_sid}" "http://${QBITTORRENT_SERVER}:${QBITTORRENT_PORT}/api/v2/app/version" | grep -qi forbidden; then
+transmission_checksid() {
+    if curl --location --request POST "http://${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}/transmission/rpc' --header 'X-Transmission-Session-Id: ${transmission_sid}" | grep -qi 409 ; then
         return 1
     else
         return 0
     fi
 }
 
-qbt_isreachable(){
-    # shellcheck disable=SC2086
-    nc -4 -vw 5 ${QBITTORRENT_SERVER} ${QBITTORRENT_PORT} &>/dev/null 2>&1
+transmission_isreachable() {
+    nc -4 -zw5 ${TRANSMISSION_SERVER} ${TRANSMISSION_PORT} >/dev/null 2>&1
 }
 
 fw_delrule(){
@@ -103,17 +102,17 @@ get_portmap() {
     res=0
     public_ip=$(getpublicip)
 
-    if ! qbt_checksid; then
-        echo "$(timestamp) | qBittorrent Cookie invalid, getting new SessionID"
-        if ! qbt_login; then
-            echo "$(timestamp) | Failed getting new SessionID from qBittorrent"
+    if ! transmission_checksid; then
+        echo "$(timestamp) | Transmission Cookie invalid, getting new SessionID"
+        if ! transmission_login; then
+            echo "$(timestamp) | Failed getting new SessionID from Transmission"
 	          return 1
         fi
     else
-        echo "$(timestamp) | qBittorrent SessionID Ok!"
+        echo "$(timestamp) | Transmission SessionID Ok!"
     fi
 
-    configured_port=$(findconfiguredport "${qbt_sid}")
+    configured_port=$(findconfiguredport "${transmission_sid}")
     active_port=$(findactiveport)
 
     echo "$(timestamp) | Public IP: ${public_ip}"
@@ -122,11 +121,11 @@ get_portmap() {
 
     # shellcheck disable=SC2086
     if [ ${configured_port} != ${active_port} ]; then
-        if qbt_changeport "${qbt_sid}" ${active_port}; then
+        if transmission_changeport "${transmission_sid}" ${active_port}; then
             if fw_delrule; then
                 echo "$(timestamp) | IPTables rule deleted for port ${configured_port} on ${VPN_CT_NAME} container"
             fi
-            echo "$(timestamp) | Port Changed to: $(findconfiguredport ${qbt_sid})"
+            echo "$(timestamp) | Port Changed to: $(findconfiguredport ${transmission_sid})"
         else
             echo "$(timestamp) | Port Change failed."
             res=1
@@ -162,10 +161,10 @@ pre_reqs() {
 while read -r var; do
     [ -z "${!var}" ] && { echo "$(timestamp) | ${var} is empty or not set."; exit 1; }
 done << EOF
-QBITTORRENT_SERVER
-QBITTORRENT_PORT
-QBITTORRENT_USER
-QBITTORRENT_PASS
+TRANSMISSION_SERVER
+TRANSMISSION_PORT
+TRANSMISSION_USER
+TRANSMISSION_PASS
 VPN_GATEWAY
 VPN_CT_NAME
 VPN_IF_NAME
@@ -180,15 +179,15 @@ return 0
 
 load_vals(){
     public_ip=$(getpublicip)
-    if qbt_isreachable; then
-        if qbt_login; then
-            configured_port=$(findconfiguredport "${qbt_sid}")
+    if transmission_isreachable; then
+        if transmission_login; then
+            configured_port=$(findconfiguredport "${transmission_sid}")
         else
-            echo "$(timestamp) | Unable to login to qBittorrent at ${QBITTORRENT_SERVER}:${QBITTORRENT_PORT}"
+            echo "$(timestamp) | Unable to login to Transmission at ${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}"
             exit 7
         fi
     else
-        echo "$(timestamp) | Unable to reach qBittorrent at ${QBITTORRENT_SERVER}:${QBITTORRENT_PORT}"
+        echo "$(timestamp) | Unable to reach Transmission at ${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}"
         exit 6
     fi
     active_port=''
@@ -197,7 +196,7 @@ load_vals(){
 public_ip=
 configured_port=
 active_port=
-qbt_sid=
+transmission_sid=
 
 # Wait for a healthy state on the VPN container
 check_vpn_ct_health
@@ -207,8 +206,8 @@ if pre_reqs; then load_vals; fi
 # shellcheck disable=SC2086
 [ -z ${public_ip} ] && { echo "$(timestamp) | Unable to grab VPN Public IP. Please check configuration"; exit 3; }
 # shellcheck disable=SC2086
-[ -z ${configured_port} ] && { echo "$(timestamp) | qBittorrent configured port value is empty(?). Please check configuration"; exit 4; }
-[ -z "${qbt_sid}" ] && { echo "$(timestamp) | Unable to grab qBittorrent SessionID. Please check configuration"; exit 5; }
+[ -z ${configured_port} ] && { echo "$(timestamp) | Transmission configured port value is empty(?). Please check configuration"; exit 4; }
+[ -z "${transmission_sid}" ] && { echo "$(timestamp) | Unable to grab Transmission SessionID. Please check configuration"; exit 5; }
 
 while true;
 do
