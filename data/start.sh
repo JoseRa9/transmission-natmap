@@ -56,7 +56,7 @@ findactiveport() {
 }
 
 transmission_login() {
-    transmission_sid=$(curl --location "http://${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}/transmission/rpc' | grep -oP '<code>X-Transmission-Session-Id: \K.*?(?=<\/code>)")
+    transmission_sid=$(curl --location "http://${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}/transmission/rpc" | grep -oP '<code>X-Transmission-Session-Id: \K.*?(?=<\/code>)')
     return $?
 }
 
@@ -66,7 +66,7 @@ transmission_changelistenport() {
 }
 
 transmission_checksid() {
-    if curl --location --request POST "http://${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}/transmission/rpc' --header 'X-Transmission-Session-Id: ${transmission_sid}" | grep -qi 409 ; then
+    if curl --location --request POST "http://${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}/transmission/rpc" --header 'X-Transmission-Session-Id: ${transmission_sid}' | grep -qi 409 ; then
         return 1
     else
         return 0
