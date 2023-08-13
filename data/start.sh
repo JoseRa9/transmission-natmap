@@ -45,7 +45,7 @@ getpublicip() {
 }
 
 findconfiguredport() {
-    curl --location "$TRANSMISSION_SERVER:$TRANSMISSION_PORT/transmission/rpc" --header "X-Transmission-Session-Id: $transmission_sid" --header "Content-Type: application/json" --data '{"arguments": { "fields": ["peer-port"] }, "method": "session-get"}' | grep -oP '(?<="peer-port":)(\d{1,5})'
+    curl -s --location "$TRANSMISSION_SERVER:$TRANSMISSION_PORT/transmission/rpc" --header "X-Transmission-Session-Id: $transmission_sid" --header "Content-Type: application/json" --data '{"arguments": { "fields": ["peer-port"] }, "method": "session-get"}' | grep -oP '(?<="peer-port":)(\d{1,5})'
 }
 
 findactiveport() {
@@ -56,17 +56,17 @@ findactiveport() {
 }
 
 transmission_login() {
-    transmission_sid=$(curl --location "http://${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}/transmission/rpc" | grep -oP '<code>X-Transmission-Session-Id: \K.*?(?=<\/code>)')
+    transmission_sid=$(curl -s --location "http://${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}/transmission/rpc" | grep -oP '<code>X-Transmission-Session-Id: \K.*?(?=<\/code>)')
     return $?
 }
 
 transmission_changelistenport() {
-    curl --location "http://$TRANSMISSION_SERVER:$TRANSMISSION_PORT/transmission/rpc" --header "X-Transmission-Session-Id: $transmission_sid" --header "Content-Type: application/json" --data "{"arguments": {"peer-port": $1, "peer-port-random-on-start": false, "port-forwarding-enabled": false}, "method": "session-set"}" >/dev/null 2>&1
+    curl -s --location "http://$TRANSMISSION_SERVER:$TRANSMISSION_PORT/transmission/rpc" --header "X-Transmission-Session-Id: $transmission_sid" --header "Content-Type: application/json" --data "{"arguments": {"peer-port": $1, "peer-port-random-on-start": false, "port-forwarding-enabled": false}, "method": "session-set"}" >/dev/null 2>&1
     return $?
 }
 
 transmission_checksid() {
-    if curl --location --request POST "http://${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}/transmission/rpc" --header 'X-Transmission-Session-Id: ${transmission_sid}' | grep -qi 409 ; then
+    if curl -s --location --request POST "http://${TRANSMISSION_SERVER}:${TRANSMISSION_PORT}/transmission/rpc" --header 'X-Transmission-Session-Id: ${transmission_sid}' | grep -qi 409 ; then
         return 1
     else
         return 0
