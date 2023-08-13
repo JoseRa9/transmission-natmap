@@ -18,7 +18,7 @@ FROM ubuntu:jammy
 
 LABEL org.opencontainers.image.source="https://github.com/soxfor/qbittorrent-natmap"
 LABEL org.opencontainers.image.base.name="ubuntu:jammy"
-LABEL description="Map port via NAT-PMP and update qBittorrent configuration"
+LABEL description="Map port via NAT-PMP and update Transmission configuration"
 LABEL version="1.1.0"
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -45,10 +45,10 @@ RUN sed -i "/${LANG}/s/^# //g" /etc/locale.gen && \
     ln -fs "/usr/share/zoneinfo/${TZ}" /etc/localtime && \
     dpkg-reconfigure tzdata
 
-ENV QBITTORRENT_SERVER=localhost
-ENV QBITTORRENT_PORT=8080
-ENV QBITTORRENT_USER=admin
-ENV QBITTORRENT_PASS=adminadmin
+ENV TRANSMISSION_SERVER=localhost
+ENV TRANSMISSION_PORT=8080
+ENV TRANSMISSION_USER=admin
+ENV TRANSMISSION_PASS=adminadmin
 ENV VPN_GATEWAY=
 ENV VPN_CT_NAME=gluetun
 ENV VPN_IF_NAME=tun0
